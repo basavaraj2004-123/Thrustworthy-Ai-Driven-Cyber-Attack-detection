@@ -1,5 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { Shield, Brain, Eye, Zap, Lock, CheckCircle, AlertTriangle, Activity, Users, Award, ArrowRight, Menu, X, Skull, Bug, Wifi, Database, Server, Terminal } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {
+  Shield, Brain, Eye, Zap, Lock, CheckCircle, AlertTriangle, Activity, Users, Award,
+  ArrowRight, Menu, X, Skull, Bug, Wifi, Database, Server, Terminal
+} from 'lucide-react';
+
+// Define severity type
+type SeverityLevel = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+
+// Define Threat type
+interface Threat {
+  type: string;
+  severity: SeverityLevel;
+  status: string;
+  icon: JSX.Element;
+  color: string;
+}
 
 function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -8,7 +23,84 @@ function App() {
   const [activeThreats, setActiveThreats] = useState(47);
   const [isScanning, setIsScanning] = useState(true);
 
-  const threats = [
+const [urlInput, setUrlInput] = useState("");
+const [fileInput, setFileInput] = useState<File | null>(null);
+const [imageInput, setImageInput] = useState<File | null>(null);
+const [scanResult, setScanResult] = useState<string | null>(null);
+const [scanResults, setScanResults] = useState<any | null>(null);
+// const handleUrlScan = () => {
+//   if (!urlInput) {
+//     setScanResult("❌ Please enter a URL first.");
+//     return;
+//   }
+//   setScanResult(`🔍 Scanning URL: ${urlInput} ... ✅ Done (simulated).`);
+// };
+
+// const handleFileScan = () => {
+//   if (!fileInput) {
+//     setScanResult("❌ Please select a PDF file first.");
+//     return;
+//   }
+//   setScanResult(`📄 File selected: ${fileInput.name} ... ✅ Scanned (simulated).`);
+// };
+
+// const handleImageScan = () => {
+//   if (!imageInput) {
+//     setScanResult("❌ Please select an image first.");
+//     return;
+//   }
+//   setScanResult(`🖼️ Image selected: ${imageInput.name} ... ✅ Scanned (simulated).`);
+// };
+const handleUrlScan = () => {
+  if (!urlInput) return alert("Please enter a URL");
+
+  // Fake scan result
+  const result = {
+    type: "URL",
+    target: urlInput,
+    detections: "2/70",
+    status: "Suspicious",
+    date: new Date().toLocaleString(),
+  };
+
+  setScanResults(result);
+  setUrlInput(""); // clear input
+};
+
+const handleFileScan = (event: React.ChangeEvent<HTMLInputElement>) => {
+  if (event.target.files && event.target.files.length > 0) {
+    const file = event.target.files[0];
+
+    const result = {
+      type: "File",
+      target: file.name,
+      detections: "0/70",
+      status: "Clean",
+      date: new Date().toLocaleString(),
+    };
+
+    setScanResults(result);
+  }
+};
+  
+const handleImageScan = (event: React.ChangeEvent<HTMLInputElement>) => {
+  if (event.target.files && event.target.files.length > 0) {
+    const image = event.target.files[0];
+
+    const result = {
+      type: "Image",
+      target: image.name,
+      detections: "5/70",
+      status: "Malicious",
+      date: new Date().toLocaleString(),
+    };
+
+    setScanResults(result);
+  }
+};
+
+  
+  const threats: Threat[] = [
     { type: "Ransomware", severity: "CRITICAL", status: "NEUTRALIZED", icon: <Skull className="w-5 h-5" />, color: "red" },
     { type: "Zero-Day Exploit", severity: "CRITICAL", status: "BLOCKED", icon: <Bug className="w-5 h-5" />, color: "red" },
     { type: "Phishing Attack", severity: "HIGH", status: "CONTAINED", icon: <Wifi className="w-5 h-5" />, color: "orange" },
@@ -26,40 +118,8 @@ function App() {
 
     return () => clearInterval(interval);
   }, []);
-  {/* New Scan Features Section */}
-<section className="py-20 bg-black text-white">
-  <div className="max-w-6xl mx-auto px-6 lg:px-8">
-    <h2 className="text-3xl font-bold mb-12 text-center">Advanced Scan Options</h2>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-      {[
-        {
-          name: "URL Scan",
-          description: "Quickly analyze suspicious links for phishing, malware, and threats.",
-          icon: "🌐",
-        },
-        {
-          name: "PDF Scan",
-          description: "Detect hidden exploits, malicious scripts, and unsafe links inside PDFs.",
-          icon: "📄",
-        },
-        {
-          name: "Image Scan",
-          description: "AI-powered scan of images to detect steganography or hidden payloads.",
-          icon: "🖼️",
-        },
-      ].map((feature) => (
-        <div
-          key={feature.name}
-          className="bg-gray-900 p-6 rounded-2xl shadow-lg hover:shadow-xl transition"
-        >
-          <div className="text-4xl mb-4">{feature.icon}</div>
-          <h3 className="text-xl font-semibold mb-2">{feature.name}</h3>
-          <p className="text-gray-400">{feature.description}</p>
-        </div>
-      ))}
-    </div>
-  </div>
-</section>
+  
+
   const features = [
   {
     title: "AI-Powered Threat Detection",
@@ -231,8 +291,11 @@ const getSeverityColor = (severity: SeverityLevel): string => {
 
       {/* Hero Section */}
       <section className="pt-24 pb-16 bg-gradient-to-br from-black via-red-950/20 to-black relative overflow-hidden">
-        <div className={`absolute inset-0 animate-pulse`} style={{ backgroundImage: backgroundPattern }}></div>
-        
+        {/* <div className={`absolute inset-0 animate-pulse`} style={{ backgroundImage: backgroundPattern }}></div> */}
+        <div
+  className="absolute inset-0 animate-pulse pointer-events-none"
+  style={{ backgroundImage: backgroundPattern }}
+></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
@@ -305,7 +368,79 @@ const getSeverityColor = (severity: SeverityLevel): string => {
               </div>
             </div>
           </div>
-        </div>
+        </div> 
+
+       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+  {/* URL Scan */}
+  <div className="bg-gray-900/70 rounded-2xl shadow-md p-6 text-center border border-blue-500/30">
+    <h3 className="text-lg font-semibold mb-3">🔗 URL Scan</h3>
+    <input
+  type="text"
+  placeholder="Enter URL..."
+  value={urlInput}
+  onChange={(e) => setUrlInput(e.target.value)}
+  className="w-full p-2 rounded mb-3 bg-white text-black"
+/>
+    <button
+      onClick={handleUrlScan}
+      className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+    >
+      Scan URL
+    </button>
+  </div>
+
+  {/* PDF Scan */}
+  <div className="bg-gray-900/70 rounded-2xl shadow-md p-6 text-center border border-green-500/30">
+    <h3 className="text-lg font-semibold mb-3">📄 PDF Scan</h3>
+    <input
+      type="file"
+      accept="application/pdf"
+      onChange={(e) => setFileInput(e.target.files ? e.target.files[0] : null)}
+      className="w-full p-2 rounded mb-3 text-black"
+    />
+    <button
+      onClick={handleFileScan}
+      className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition"
+    >
+      Scan PDF
+    </button>
+  </div>
+
+  {/* Image Scan */}
+  <div className="bg-gray-900/70 rounded-2xl shadow-md p-6 text-center border border-purple-500/30">
+    <h3 className="text-lg font-semibold mb-3">🖼️ Image Scan</h3>
+    <input
+      type="file"
+      accept="image/*"
+      onChange={(e) => setImageInput(e.target.files ? e.target.files[0] : null)}
+      className="w-full p-2 rounded mb-3 text-black"
+    />
+    <button
+      onClick={handleImageScan}
+      className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition"
+    >
+      Scan Image
+    </button>
+  </div>
+</div>
+{scanResults && (
+  <div className="mt-6 p-4 rounded-xl bg-gray-900 text-white shadow-lg">
+    <h3 className="text-lg font-bold mb-2">Scan Result</h3>
+    <p><strong>Type:</strong> {scanResults.type}</p>
+    <p><strong>Target:</strong> {scanResults.target}</p>
+    <p><strong>Detections:</strong> {scanResults.detections}</p>
+    <p><strong>Status:</strong> 
+      <span className={`ml-2 px-2 py-1 rounded ${
+        scanResults.status === "Clean" ? "bg-green-600" :
+        scanResults.status === "Suspicious" ? "bg-yellow-600" : "bg-red-600"
+      }`}>
+        {scanResults.status}
+      </span>
+    </p>
+    <p><strong>Date:</strong> {scanResults.date}</p>
+  </div>
+)}
+       
       </section>
 
       {/* Stats Section */}
