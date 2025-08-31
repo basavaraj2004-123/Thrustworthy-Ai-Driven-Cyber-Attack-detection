@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
-  Shield, Brain, Eye, Zap, Lock, CheckCircle, AlertTriangle, Activity, Users, Award,
-  ArrowRight, Menu, X, Skull, Bug, Wifi, Database, Server, Terminal
+  Shield, Brain, Eye, Zap, Lock, CheckCircle, AlertTriangle,
+  Activity, Users, Award, ArrowRight, Menu, X, Skull, Bug, Wifi,
+  Database, Server, Terminal,
 } from 'lucide-react';
 
 // Define severity type
@@ -21,155 +22,214 @@ function App() {
   const [currentThreat, setCurrentThreat] = useState(0);
   const [detectionCount, setDetectionCount] = useState(1247);
   const [activeThreats, setActiveThreats] = useState(47);
-  const [isScanning, setIsScanning] = useState(true);
+  const [isScanning] = useState(true);
+  const [urlInput, setUrlInput] = useState("");
+  const [fileInput, setFileInput] = useState<File | null>(null);
+  const [imageInput, setImageInput] = useState<File | null>(null);
+  const [, setScanResult] = useState<string | null>(null);
+  const [scanResults, setScanResults] = useState<any | null>(null);
 
-const [urlInput, setUrlInput] = useState("");
-const [fileInput, setFileInput] = useState<File | null>(null);
-const [imageInput, setImageInput] = useState<File | null>(null);
-const [scanResult, setScanResult] = useState<string | null>(null);
-const [scanResults, setScanResults] = useState<any | null>(null);
-// const handleUrlScan = () => {
-//   if (!urlInput) {
-//     setScanResult("❌ Please enter a URL first.");
-//     return;
-//   }
-//   setScanResult(`🔍 Scanning URL: ${urlInput} ... ✅ Done (simulated).`);
-// };
-
-// const handleFileScan = () => {
-//   if (!fileInput) {
-//     setScanResult("❌ Please select a PDF file first.");
-//     return;
-//   }
-//   setScanResult(`📄 File selected: ${fileInput.name} ... ✅ Scanned (simulated).`);
-// };
-
-// const handleImageScan = () => {
-//   if (!imageInput) {
-//     setScanResult("❌ Please select an image first.");
-//     return;
-//   }
-//   setScanResult(`🖼️ Image selected: ${imageInput.name} ... ✅ Scanned (simulated).`);
-// };
-const handleUrlScan = () => {
+  // Async scan handlers
+const handleUrlScan = async () => {
   if (!urlInput) return alert("Please enter a URL");
+  setScanResult("🔍 Scanning URL...");
+  try {
+    const response = await fetch('/api/scan/url', {
+      method: 'POST',
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: urlInput }),
+    });
+    if (!response.ok) throw new Error("Scan failed");
+    const result = await response.json();
 
-  // Fake scan result
-  const result = {
-    type: "URL",
-    target: urlInput,
-    detections: "2/70",
-    status: "Suspicious",
-    date: new Date().toLocaleString(),
+    const stats = result.last_analysis_stats ?? result.data?.attributes?.last_analysis_stats ?? {};
+    const analysisResults = result.analysisResults || {};
+
+    let maliciousCount = 0;
+    let totalCount = 0;
+
+    if (Object.keys(stats).length > 0) {
+      maliciousCount = stats.malicious ?? 0;
+      totalCount = (Object.values(stats) as number[]).reduce((a, b) => a + b, 0);
+    } else if (Object.keys(analysisResults).length > 0) {
+      totalCount = Object.keys(analysisResults).length;
+      maliciousCount = Object.values(analysisResults).filter((res: any) => res.category === 'malicious').length;
+    }
+
+    setScanResults({
+      type: "URL",
+      target: urlInput,
+      detections: `${maliciousCount}/${totalCount}`,
+      status: maliciousCount > 0 ? "Malicious" : "Clean",
+      date: new Date().toLocaleString(),
+      analysisResults: analysisResults,
+    });
+  } catch (error) {
+    setScanResult("❌ Scan failed. Try again.");
+  }
+  setUrlInput("");
+};
+
+const handleFileScan = async () => {
+  if (!fileInput) return alert("Please select a PDF file");
+  setScanResult("📄 Scanning file...");
+  try {
+    const formData = new FormData();
+    formData.append('file', fileInput);
+    const response = await fetch('/api/scan/file', {
+      method: 'POST',
+      body: formData,
+    });
+    if (!response.ok) throw new Error("File scan failed");
+    const result = await response.json();
+
+    const stats = result.last_analysis_stats ?? result.data?.attributes?.last_analysis_stats ?? {};
+    const analysisResults = result.analysisResults || {};
+
+    let maliciousCount = 0;
+    let totalCount = 0;
+
+    if (Object.keys(stats).length > 0) {
+      maliciousCount = stats.malicious ?? 0;
+      totalCount = (Object.values(stats) as number[]).reduce((a, b) => a + b, 0);
+    } else if (Object.keys(analysisResults).length > 0) {
+      totalCount = Object.keys(analysisResults).length;
+      maliciousCount = Object.values(analysisResults).filter((res: any) => res.category === 'malicious').length;
+    }
+
+    setScanResults({
+      type: "File",
+      target: fileInput.name,
+      detections: `${maliciousCount}/${totalCount}`,
+      status: maliciousCount > 0 ? "Malicious" : "Clean",
+      date: new Date().toLocaleString(),
+      analysisResults: analysisResults,
+    });
+  } catch (error) {
+    setScanResult("❌ File scan failed.");
+  }
+  setFileInput(null);
+};
+
+const handleImageScan = async () => {
+  if (!imageInput) return alert("Please select an image");
+  setScanResult("🖼️ Scanning image...");
+  try {
+    const formData = new FormData();
+    formData.append('image', imageInput);
+    const response = await fetch('/api/scan/image', {
+      method: 'POST',
+      body: formData,
+    });
+    if (!response.ok) throw new Error("Image scan failed");
+    const result = await response.json();
+
+    const stats = result.last_analysis_stats ?? result.data?.attributes?.last_analysis_stats ?? {};
+    const analysisResults = result.analysisResults || {};
+
+    let maliciousCount = 0;
+    let totalCount = 0;
+
+    if (Object.keys(stats).length > 0) {
+      maliciousCount = stats.malicious ?? 0;
+      totalCount = (Object.values(stats) as number[]).reduce((a, b) => a + b, 0);
+    } else if (Object.keys(analysisResults).length > 0) {
+      totalCount = Object.keys(analysisResults).length;
+      maliciousCount = Object.values(analysisResults).filter((res: any) => res.category === 'malicious').length;
+    }
+
+    setScanResults({
+      type: "Image",
+      target: imageInput.name,
+      detections: `${maliciousCount}/${totalCount}`,
+      status: maliciousCount > 0 ? "Malicious" : "Clean",
+      date: new Date().toLocaleString(),
+      analysisResults: analysisResults,
+    });
+  } catch (error) {
+    setScanResult("❌ Image scan failed.");
+  }
+  setImageInput(null);
+};
+
+
+
+  // Input change handlers
+  const onFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFileInput(event.target.files ? event.target.files[0] : null);
   };
 
-  setScanResults(result);
-  setUrlInput(""); // clear input
-};
+  const onImageInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setImageInput(event.target.files ? event.target.files[0] : null);
+  };
 
-const handleFileScan = (event: React.ChangeEvent<HTMLInputElement>) => {
-  if (event.target.files && event.target.files.length > 0) {
-    const file = event.target.files[0];
-
-    const result = {
-      type: "File",
-      target: file.name,
-      detections: "0/70",
-      status: "Clean",
-      date: new Date().toLocaleString(),
-    };
-
-    setScanResults(result);
-  }
-};
-  
-const handleImageScan = (event: React.ChangeEvent<HTMLInputElement>) => {
-  if (event.target.files && event.target.files.length > 0) {
-    const image = event.target.files[0];
-
-    const result = {
-      type: "Image",
-      target: image.name,
-      detections: "5/70",
-      status: "Malicious",
-      date: new Date().toLocaleString(),
-    };
-
-    setScanResults(result);
-  }
-};
-
-  
   const threats: Threat[] = [
-    { type: "Ransomware", severity: "CRITICAL", status: "NEUTRALIZED", icon: <Skull className="w-5 h-5" />, color: "red" },
-    { type: "Zero-Day Exploit", severity: "CRITICAL", status: "BLOCKED", icon: <Bug className="w-5 h-5" />, color: "red" },
-    { type: "Phishing Attack", severity: "HIGH", status: "CONTAINED", icon: <Wifi className="w-5 h-5" />, color: "orange" },
-    { type: "SQL Injection", severity: "HIGH", status: "BLOCKED", icon: <Database className="w-5 h-5" />, color: "orange" },
-    { type: "DDoS Attack", severity: "MEDIUM", status: "MITIGATED", icon: <Server className="w-5 h-5" />, color: "yellow" },
-    { type: "Malware Injection", severity: "HIGH", status: "QUARANTINED", icon: <Terminal className="w-5 h-5" />, color: "orange" }
+    {type: "Ransomware", severity: "CRITICAL", status: "NEUTRALIZED", icon: <Skull className="w-5 h-5" />, color: "red"},
+    {type: "Zero-Day Exploit", severity: "CRITICAL", status: "BLOCKED", icon: <Bug className="w-5 h-5" />, color: "red"},
+    {type: "Phishing Attack", severity: "HIGH", status: "CONTAINED", icon: <Wifi className="w-5 h-5" />, color: "orange"},
+    {type: "SQL Injection", severity: "HIGH", status: "BLOCKED", icon: <Database className="w-5 h-5" />, color: "orange"},
+    {type: "DDoS Attack", severity: "MEDIUM", status: "MITIGATED", icon: <Server className="w-5 h-5" />, color: "yellow"},
+    {type: "Malware Injection", severity: "HIGH", status: "QUARANTINED", icon: <Terminal className="w-5 h-5" />, color: "orange"}
   ];
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentThreat((prev) => (prev + 1) % threats.length);
-      setDetectionCount((prev) => prev + Math.floor(Math.random() * 5) + 1);
-      setActiveThreats((prev) => Math.max(1, prev + Math.floor(Math.random() * 3) - 1));
+      setCurrentThreat(prev => (prev + 1) % threats.length);
+      setDetectionCount(prev => prev + Math.floor(Math.random() * 5) + 1);
+      setActiveThreats(prev => Math.max(1, prev + Math.floor(Math.random() * 3) - 1));
     }, 2000);
-
     return () => clearInterval(interval);
   }, []);
-  
 
   const features = [
-  {
-    title: "AI-Powered Threat Detection",
-    description: "Real-time analysis of network traffic using advanced machine learning algorithms to detect and prevent evolving threats.",
-    icon: <Brain className="w-6 h-6" />,
-    color: "from-red-500 to-pink-500"
-  },
-  {
-    title: "End-to-End Encryption",
-    description: "Military-grade encryption protocols ensuring absolute data privacy and secure communication across all channels.",
-    icon: <Lock className="w-6 h-6" />,
-    color: "from-blue-500 to-cyan-500"
-  },
-  {
-    title: "Real-Time Intrusion Detection",
-    description: "Detects unauthorized access attempts instantly and neutralizes them before damage can occur.",
-    icon: <Shield className="w-6 h-6" />,
-    color: "from-green-500 to-emerald-500"
-  },
-  {
-    title: "Adaptive AI Defense",
-    description: "Continuously evolves and learns from new threats, ensuring defense mechanisms stay one step ahead.",
-    icon: <Activity className="w-6 h-6" />,
-    color: "from-yellow-500 to-orange-500"
-  },
-  {
-    title: "Threat Intelligence Network",
-    description: "Shares and aggregates live threat data from global sources to enhance collective defense.",
-    icon: <Users className="w-6 h-6" />,
-    color: "from-purple-500 to-indigo-500"
-  },
-  {
-    title: "Predictive Analytics",
-    description: "Anticipates future attacks based on historical data patterns and AI forecasting models.",
-    icon: <Eye className="w-6 h-6" />,
-    color: "from-pink-500 to-fuchsia-500"
-  },
-  {
-    title: "Automated Response",
-    description: "Automatically isolates infected nodes and applies countermeasures within milliseconds.",
-    icon: <Zap className="w-6 h-6" />,
-    color: "from-orange-500 to-red-500"
-  },
-  {
-    title: "Continuous Monitoring",
-    description: "24/7 deep packet inspection and behavioral monitoring across all layers of the network.",
-    icon: <Server className="w-6 h-6" />,
-    color: "from-cyan-500 to-teal-500"
-  },
-
+    {
+      title: "AI-Powered Threat Detection",
+      description: "Real-time analysis of network traffic using advanced machine learning algorithms to detect and prevent evolving threats.",
+      icon: <Brain className="w-6 h-6" />,
+      color: "from-red-500 to-pink-500"
+    },
+    {
+      title: "End-to-End Encryption",
+      description: "Military-grade encryption protocols ensuring absolute data privacy and secure communication across all channels.",
+      icon: <Lock className="w-6 h-6" />,
+      color: "from-blue-500 to-cyan-500"
+    },
+    {
+      title: "Real-Time Intrusion Detection",
+      description: "Detects unauthorized access attempts instantly and neutralizes them before damage can occur.",
+      icon: <Shield className="w-6 h-6" />,
+      color: "from-green-500 to-emerald-500"
+    },
+    {
+      title: "Adaptive AI Defense",
+      description: "Continuously evolves and learns from new threats, ensuring defense mechanisms stay one step ahead.",
+      icon: <Activity className="w-6 h-6" />,
+      color: "from-yellow-500 to-orange-500"
+    },
+    {
+      title: "Threat Intelligence Network",
+      description: "Shares and aggregates live threat data from global sources to enhance collective defense.",
+      icon: <Users className="w-6 h-6" />,
+      color: "from-purple-500 to-indigo-500"
+    },
+    {
+      title: "Predictive Analytics",
+      description: "Anticipates future attacks based on historical data patterns and AI forecasting models.",
+      icon: <Eye className="w-6 h-6" />,
+      color: "from-pink-500 to-fuchsia-500"
+    },
+    {
+      title: "Automated Response",
+      description: "Automatically isolates infected nodes and applies countermeasures within milliseconds.",
+      icon: <Zap className="w-6 h-6" />,
+      color: "from-orange-500 to-red-500"
+    },
+    {
+      title: "Continuous Monitoring",
+      description: "24/7 deep packet inspection and behavioral monitoring across all layers of the network.",
+      icon: <Server className="w-6 h-6" />,
+      color: "from-cyan-500 to-teal-500"
+    },
     {
       icon: <Brain className="w-8 h-8" />,
       title: "AI Threat Hunter",
@@ -216,30 +276,20 @@ const handleImageScan = (event: React.ChangeEvent<HTMLInputElement>) => {
   ];
 
   type SeverityLevel = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
-
-const getSeverityColor = (severity: SeverityLevel): string => {
-  switch (severity) {
-    case 'CRITICAL':
-      return 'text-red-400 bg-red-900/20 border-red-500/30';
-    case 'HIGH':
-      return 'text-orange-400 bg-orange-900/20 border-orange-500/30';
-    case 'MEDIUM':
-      return 'text-yellow-400 bg-yellow-900/20 border-yellow-500/30';
-    case 'LOW':
-      return 'text-green-400 bg-green-900/20 border-green-500/30';
-    default:
-      return 'text-gray-400 bg-gray-900/20 border-gray-500/30';
-  }
-};
-
-  // const getSeverityColor = (severity) => {
-  //   switch(severity) {
-  //     case 'CRITICAL': return 'text-red-400 bg-red-900/20 border-red-500/30';
-  //     case 'HIGH': return 'text-orange-400 bg-orange-900/20 border-orange-500/30';
-  //     case 'MEDIUM': return 'text-yellow-400 bg-yellow-900/20 border-yellow-500/30';
-  //     default: return 'text-gray-400 bg-gray-900/20 border-gray-500/30';
-  //   }
-  // };
+  const getSeverityColor = (severity: SeverityLevel): string => {
+    switch (severity) {
+      case 'CRITICAL':
+        return 'text-red-400 bg-red-900/20 border-red-500/30';
+      case 'HIGH':
+        return 'text-orange-400 bg-orange-900/20 border-orange-500/30';
+      case 'MEDIUM':
+        return 'text-yellow-400 bg-yellow-900/20 border-yellow-500/30';
+      case 'LOW':
+        return 'text-green-400 bg-green-900/20 border-green-500/30';
+      default:
+        return 'text-gray-400 bg-gray-900/20 border-gray-500/30';
+    }
+  };
 
   const backgroundPattern = `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23dc2626' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`;
 
@@ -291,7 +341,7 @@ const getSeverityColor = (severity: SeverityLevel): string => {
 
       {/* Hero Section */}
       <section className="pt-24 pb-16 bg-gradient-to-br from-black via-red-950/20 to-black relative overflow-hidden">
-        {/* <div className={`absolute inset-0 animate-pulse`} style={{ backgroundImage: backgroundPattern }}></div> */}
+        {/* {<div className={`absolute inset-0 animate-pulse`} style={{ backgroundImage: backgroundPattern }}></div> } */}
         <div
   className="absolute inset-0 animate-pulse pointer-events-none"
   style={{ backgroundImage: backgroundPattern }}
@@ -369,60 +419,68 @@ const getSeverityColor = (severity: SeverityLevel): string => {
             </div>
           </div>
         </div> 
-
+       
        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-  {/* URL Scan */}
-  <div className="bg-gray-900/70 rounded-2xl shadow-md p-6 text-center border border-blue-500/30">
-    <h3 className="text-lg font-semibold mb-3">🔗 URL Scan</h3>
-    <input
-  type="text"
-  placeholder="Enter URL..."
-  value={urlInput}
-  onChange={(e) => setUrlInput(e.target.value)}
-  className="w-full p-2 rounded mb-3 bg-white text-black"
-/>
-    <button
-      onClick={handleUrlScan}
-      className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
-    >
-      Scan URL
-    </button>
-  </div>
+{/* URL Scan */}
+            <div className="bg-gray-900/70 rounded-2xl shadow-md p-6 text-center border border-blue-500/30">
+              <h3 className="text-lg font-semibold mb-3">🔗 URL Scan</h3>
+              <input
+                type="text"
+                placeholder="Enter URL..."
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                className="w-full p-2 rounded mb-3 bg-white text-black"
+              />
+              <button
+                onClick={handleUrlScan}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+              >
+                Scan URL
+              </button>
+            </div>
 
-  {/* PDF Scan */}
-  <div className="bg-gray-900/70 rounded-2xl shadow-md p-6 text-center border border-green-500/30">
-    <h3 className="text-lg font-semibold mb-3">📄 PDF Scan</h3>
-    <input
-      type="file"
-      accept="application/pdf"
-      onChange={(e) => setFileInput(e.target.files ? e.target.files[0] : null)}
-      className="w-full p-2 rounded mb-3 text-black"
-    />
-    <button
-      onClick={handleFileScan}
-      className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition"
-    >
-      Scan PDF
-    </button>
-  </div>
+            {/* PDF Scan */}
+            <div className="bg-gray-900/70 rounded-2xl shadow-md p-6 text-center border border-green-500/30">
+              <h3 className="text-lg font-semibold mb-3">📄 PDF Scan</h3>
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={onFileInputChange}
+                className="w-full p-2 rounded mb-3 text-black"
+              />
+              <button
+                onClick={handleFileScan}
+                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition"
+              >
+                Scan PDF
+              </button>
+            </div>
 
-  {/* Image Scan */}
-  <div className="bg-gray-900/70 rounded-2xl shadow-md p-6 text-center border border-purple-500/30">
-    <h3 className="text-lg font-semibold mb-3">🖼️ Image Scan</h3>
-    <input
-      type="file"
-      accept="image/*"
-      onChange={(e) => setImageInput(e.target.files ? e.target.files[0] : null)}
-      className="w-full p-2 rounded mb-3 text-black"
-    />
-    <button
-      onClick={handleImageScan}
-      className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition"
-    >
-      Scan Image
-    </button>
-  </div>
-</div>
+            {/* Image Scan */}
+            <div className="bg-gray-900/70 rounded-2xl shadow-md p-6 text-center border border-purple-500/30">
+              <h3 className="text-lg font-semibold mb-3">🖼️ Image Scan</h3>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={onImageInputChange}
+                className="w-full p-2 rounded mb-3 text-black"
+              />
+              <button
+                onClick={handleImageScan}
+                className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition"
+              >
+                Scan Image
+              </button>
+            </div>
+          </div>
+
+           {/* {scanResult && (
+          <div className="mb-4 p-2 bg-red-600 text-white rounded text-center">
+            {scanResult}
+            </div>
+          )} */}
+
+          {/* Scan Result Display */}
 {scanResults && (
   <div className="mt-6 p-4 rounded-xl bg-gray-900 text-white shadow-lg">
     <h3 className="text-lg font-bold mb-2">Scan Result</h3>
@@ -438,9 +496,39 @@ const getSeverityColor = (severity: SeverityLevel): string => {
       </span>
     </p>
     <p><strong>Date:</strong> {scanResults.date}</p>
+
+    {/* Detailed Engine Detections */}
+    {scanResults.analysisResults && (
+      <div className="mt-4 overflow-auto max-h-60 bg-gray-800 p-4 rounded-lg">
+        <h4 className="text-white font-semibold mb-2">Engine detections:</h4>
+        <table className="w-full text-left text-sm text-gray-200">
+          <thead>
+            <tr>
+              <th className="pb-1">Engine</th>
+              <th className="pb-1">Category</th>
+              <th className="pb-1">Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(scanResults.analysisResults).map(([key, val]: any) => (
+              <tr key={key} className="border-t border-gray-700">
+                <td className="py-1">{val.engine_name}</td>
+                <td className={`py-1 font-semibold ${
+                  val.category === 'malicious' ? 'text-red-500' :
+                  val.category === 'suspicious' ? 'text-yellow-400' :
+                  'text-green-400'
+                }`}>{val.category}</td>
+                <td className="py-1">{val.result || 'Clean'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
   </div>
 )}
-       
+
+
       </section>
 
       {/* Stats Section */}
